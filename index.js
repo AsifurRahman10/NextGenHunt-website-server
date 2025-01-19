@@ -23,6 +23,7 @@ async function run() {
     try {
 
         const productCollection = client.db('nextgenhuntDB').collection('products')
+        const userCollection = client.db('nextgenhuntDB').collection('user')
 
 
         // get latest product for feature section
@@ -45,6 +46,19 @@ async function run() {
             const query = { _id: new ObjectId(id) }
             const result = await productCollection.findOne(query);
             res.send(result);
+        })
+
+        // save user info 
+        app.post('/userInfo', async (req, res) => {
+            const { userData, email } = req.body;
+            const query = { email: email }
+            const data = await userCollection.findOne(query);
+            if (data) {
+                res.status(409).send({ message: "User already exist" })
+            }
+
+            const result = await userCollection.insertOne(userData);
+            res.send(result)
         })
 
         // Connect the client to the server	(optional starting in v4.7)
