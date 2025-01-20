@@ -63,6 +63,12 @@ async function run() {
             res.send({ token });
         })
 
+        // get all products
+        app.get('/all-products', async (req, res) => {
+            const result = await productCollection.find().toArray();
+            res.send(result)
+        })
+
         // get latest product for feature section
         app.get("/featureProducts", async (req, res) => {
             const result = await productCollection.find().sort({ timestamp: -1 }).limit(4).toArray();
