@@ -24,6 +24,7 @@ async function run() {
 
         const productCollection = client.db('nextgenhuntDB').collection('products')
         const userCollection = client.db('nextgenhuntDB').collection('user')
+        const voteCollection = client.db('nextgenhuntDB').collection('vote')
 
 
         // get latest product for feature section
@@ -50,15 +51,38 @@ async function run() {
 
         // save user info 
         app.post('/userInfo', async (req, res) => {
-            const { userData, email } = req.body;
-            const query = { email: email }
+            const userData = req.body;
+            const query = { email: userData.email }
             const data = await userCollection.findOne(query);
             if (data) {
-                res.status(409).send({ message: "User already exist" })
+                return res.status(409).send({ message: "User already exists" });
             }
 
             const result = await userCollection.insertOne(userData);
             res.send(result)
+        })
+
+        // give vote
+        app.patch('/vote/:id', async (req, res) => {
+            const id = req.params.id;
+            const data = req.body;
+            const filter = { _id: new ObjectId(id) };
+
+            // check if already voted or not
+
+            const checkVoted = await voteCollection.findOne({ email: data.email, productId: data.productId });
+            if (checkVoted) {
+                return res.status(409).send({ message: "You have already voted this product" })
+            }
+            const updateVote = {
+                $inc: {
+                    upvotes: 1
+                }
+            }
+            const result = await productCollection.updateOne(filter, updateVote);
+            const userVote = await voteCollection.insertOne(data);
+            res.send(result);
+
         })
 
         // Connect the client to the server	(optional starting in v4.7)
