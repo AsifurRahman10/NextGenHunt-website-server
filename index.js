@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 const app = express()
 
@@ -19,6 +20,7 @@ const client = new MongoClient(uri, {
     autoSelectFamily: false,
 });
 
+
 async function run() {
     try {
 
@@ -27,6 +29,39 @@ async function run() {
         const voteCollection = client.db('nextgenhuntDB').collection('vote')
         const reviewCollection = client.db('nextgenhuntDB').collection('review')
 
+        // verify user token with middleware
+        const verifyToken = (req, res, next) => {
+            if (!req.headers.authorization) {
+                return res.status(401).send({ message: "forbidden access" })
+            }
+            const token = req.headers.authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ message: "forbidden access" });
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
+
+        // verify admin
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await userCollection.findOne(query);
+            const isAdmin = user?.role == "admin";
+            if (!isAdmin) {
+                res.status(401).send({ message: "unauthorized access" })
+            }
+            next();
+        }
+
+        // make jwt token and send it
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1d' });
+            res.send({ token });
+        })
 
         // get latest product for feature section
         app.get("/featureProducts", async (req, res) => {
@@ -43,7 +78,8 @@ async function run() {
         })
 
         // get individual product data
-        app.get('/product-details/:id', async (req, res) => {
+        app.get('/product-details/:id', verifyToken, async (req, res) => {
+            console.log(req.header);
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await productCollection.findOne(query);
@@ -52,7 +88,7 @@ async function run() {
 
         // get all the review 
         app.get('/all-review', async (req, res) => {
-            const result = await reviewCollection.find().toArray();
+            const result = await reviewCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         })
 
