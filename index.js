@@ -25,6 +25,7 @@ async function run() {
         const productCollection = client.db('nextgenhuntDB').collection('products')
         const userCollection = client.db('nextgenhuntDB').collection('user')
         const voteCollection = client.db('nextgenhuntDB').collection('vote')
+        const reviewCollection = client.db('nextgenhuntDB').collection('review')
 
 
         // get latest product for feature section
@@ -49,6 +50,12 @@ async function run() {
             res.send(result);
         })
 
+        // get all the review 
+        app.get('/all-review', async (req, res) => {
+            const result = await reviewCollection.find().toArray();
+            res.send(result);
+        })
+
         // save user info 
         app.post('/userInfo', async (req, res) => {
             const userData = req.body;
@@ -60,6 +67,13 @@ async function run() {
 
             const result = await userCollection.insertOne(userData);
             res.send(result)
+        })
+
+        // post review of the user about product
+        app.post('/post-review', async (req, res) => {
+            const reviewData = req.body;
+            const result = await reviewCollection.insertOne(reviewData);
+            res.send(result);
         })
 
         // give vote
