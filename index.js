@@ -125,6 +125,14 @@ async function run() {
             res.send(result)
         })
 
+        // check status
+        app.get('/subscription-check/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await paymentCollection.findOne(query);
+            res.send(result);
+        })
+
         // stripe payment intent
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body;
