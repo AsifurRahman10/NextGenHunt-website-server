@@ -66,12 +66,23 @@ async function run() {
         // get all products
         app.get('/all-products', async (req, res) => {
             const search = req.query.search || "";
+            const page = parseInt(req.query.page);
+            const size = parseInt(req.query.size);
+            console.log(page);
+            console.log(size);
             let query = {};
             if (search) {
                 query = { tags: { $in: [new RegExp(search, "i")] } };
             }
-            const result = await productCollection.find(query).toArray();
+            const skip = page > 1 ? (page - 1) * size : 0;
+            const result = await productCollection.find(query).skip(skip).limit(size).toArray();
             res.send(result)
+        })
+
+        // product count for pagination
+        app.get('/count', async (req, res) => {
+            const result = await productCollection.countDocuments();
+            res.send({ result })
         })
 
         // get latest product for feature section
@@ -101,6 +112,14 @@ async function run() {
         app.get('/all-review', async (req, res) => {
             const result = await reviewCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
+        })
+
+        // get user info
+        app.get('/user-info/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email }
+            const result = await userCollection.findOne(query);
+            res.send(result)
         })
 
         // save user info 
