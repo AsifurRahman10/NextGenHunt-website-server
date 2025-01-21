@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(`${process.env.Stripe_key}`);
 const app = express()
 
 
@@ -28,6 +29,7 @@ async function run() {
         const userCollection = client.db('nextgenhuntDB').collection('user')
         const voteCollection = client.db('nextgenhuntDB').collection('vote')
         const reviewCollection = client.db('nextgenhuntDB').collection('review')
+        const paymentCollection = client.db('nextgenhuntDB').collection('payments')
 
         // verify user token with middleware
         const verifyToken = (req, res, next) => {
@@ -62,6 +64,7 @@ async function run() {
             const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1d' });
             res.send({ token });
         })
+
 
         // get all products
         app.get('/all-products', async (req, res) => {
@@ -120,6 +123,29 @@ async function run() {
             const query = { email: email }
             const result = await userCollection.findOne(query);
             res.send(result)
+        })
+
+        // stripe payment intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: [
+                    "card",
+                ],
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        })
+
+        // payment info saved to db
+        app.post('/paymentInfo', async (req, res) => {
+            const paymentData = req.body;
+            const result = await paymentCollection.insertOne(paymentData);
+            res.send(result);
         })
 
         // save user info 
