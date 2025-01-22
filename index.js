@@ -133,6 +133,13 @@ async function run() {
             res.send(result);
         })
 
+        // add new product to db
+        app.post('/add-products', async (req, res) => {
+            const productData = req.body;
+            const result = await productCollection.insertOne(productData);
+            res.send(result);
+        })
+
         // stripe payment intent
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body;
