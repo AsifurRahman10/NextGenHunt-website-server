@@ -71,11 +71,9 @@ async function run() {
             const search = req.query.search || "";
             const page = parseInt(req.query.page);
             const size = parseInt(req.query.size);
-            console.log(page);
-            console.log(size);
             let query = {};
             if (search) {
-                query = { tags: { $in: [new RegExp(search, "i")] } };
+                query = { allTag: { $in: [new RegExp(search, "i")] } };
             }
             const skip = page > 1 ? (page - 1) * size : 0;
             const result = await productCollection.find(query).skip(skip).limit(size).toArray();
@@ -97,7 +95,7 @@ async function run() {
         // get 6 most voted products
         app.get('/trending', async (req, res) => {
             const result = await productCollection.find().sort({
-                upvotes: -1
+                upvote: -1
             }).limit(6).toArray();
             res.send(result);
         })
@@ -112,8 +110,12 @@ async function run() {
         })
 
         // get all the review 
-        app.get('/all-review', async (req, res) => {
-            const result = await reviewCollection.find().sort({ _id: -1 }).toArray();
+        app.get('/all-review/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = {
+                productId: id
+            };
+            const result = await reviewCollection.find(query).sort({ _id: -1 }).toArray();
             res.send(result);
         })
 
@@ -128,8 +130,17 @@ async function run() {
         // check status
         app.get('/subscription-check/:email', async (req, res) => {
             const email = req.params.email;
+            console.log(email);
             const query = { email: email };
             const result = await paymentCollection.findOne(query);
+            res.send(result);
+        })
+
+        // get product my user email
+        app.get('/products/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await productCollection.find(query).toArray();
             res.send(result);
         })
 
@@ -197,7 +208,7 @@ async function run() {
             }
             const updateVote = {
                 $inc: {
-                    upvotes: 1
+                    upvote: 1
                 }
             }
             const result = await productCollection.updateOne(filter, updateVote);
