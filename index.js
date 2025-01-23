@@ -182,6 +182,13 @@ async function run() {
             res.send(result);
         })
 
+        // get the reported content
+        app.get('/reported', async (req, res) => {
+            const query = { isReported: true };
+            const result = await productCollection.find(query).toArray();
+            res.send(result);
+        })
+
         // add new product to db
         app.post('/add-products', async (req, res) => {
             const productData = req.body;
@@ -253,6 +260,17 @@ async function run() {
             const userVote = await voteCollection.insertOne(data);
             res.send(result);
 
+        })
+
+        // report a post
+        app.patch('/report/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedProduct = {
+                $set: { "isReported": true }
+            }
+            const result = await productCollection.updateOne(filter, updatedProduct);
+            res.send(result);
         })
 
         // update product
