@@ -66,6 +66,7 @@ async function run() {
         })
 
 
+
         // get all products
         app.get('/all-products', async (req, res) => {
             const search = req.query.search || "";
@@ -84,6 +85,37 @@ async function run() {
             }
             const skip = page > 1 ? (page - 1) * size : 0;
             const result = await productCollection.find(query).skip(skip).limit(size).toArray();
+            res.send(result)
+        })
+
+        // get all data for moderator
+        app.get('/all-products-sorted', async (req, res) => {
+            // const result = await productCollection.find().sort({ status: -1 }).toArray();
+            // res.send(result);
+            const result = await productCollection.aggregate([
+                {
+                    $addFields: {
+                        sortPriority: {
+                            $switch: {
+                                branches: [
+                                    {
+                                        case: { $eq: ["$status", "pending"] }, then: 1
+                                    },
+                                    {
+                                        case: { $eq: ["$status", "accepted"] }, then: 2
+                                    },
+                                    {
+                                        case: { $eq: ["$status", "rejected"] }, then: 3
+                                    },
+                                ],
+                                default: 4,
+                            }
+                        }
+                    }
+                },
+                { $sort: { sortPriority: 1 } },
+                { $project: { sortPriority: 0 } }
+            ]).toArray();
             res.send(result)
         })
 
@@ -244,6 +276,19 @@ async function run() {
             const result = await productCollection.updateOne(filter, updateProductData);
             res.send(result);
 
+        })
+
+
+        // update status by moderator
+        app.patch('/update-status/:id', async (req, res) => {
+            const id = req.params.id;
+            const { status } = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const updateData = {
+                $set: { status: status }
+            }
+            const result = await productCollection.updateOne(filter, updateData);
+            res.send(result);
         })
 
         // delete a product created by user
