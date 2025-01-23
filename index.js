@@ -182,6 +182,13 @@ async function run() {
             res.send(result);
         })
 
+
+        // get all the user
+        app.get('/all-users', async (req, res) => {
+            const result = await userCollection.find().toArray();
+            res.send(result);
+        })
+
         // get the reported content
         app.get('/reported', async (req, res) => {
             const query = { isReported: true };
@@ -294,6 +301,18 @@ async function run() {
             const result = await productCollection.updateOne(filter, updateProductData);
             res.send(result);
 
+        })
+
+        // update user role
+
+        app.patch('/update-role', async (req, res) => {
+            const { role, userId } = req.body;
+            const query = { _id: new ObjectId(userId) };
+            const updateData = {
+                $set: { role: role }
+            };
+            const result = await userCollection.updateOne(query, updateData);
+            res.send(result);
         })
 
 
