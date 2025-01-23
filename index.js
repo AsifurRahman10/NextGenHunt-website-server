@@ -71,9 +71,16 @@ async function run() {
             const search = req.query.search || "";
             const page = parseInt(req.query.page);
             const size = parseInt(req.query.size);
-            let query = {};
+            let query = { status: "accepted" };
             if (search) {
-                query = { allTag: { $in: [new RegExp(search, "i")] } };
+                query = {
+                    $and: [
+                        { allTag: { $in: [new RegExp(search, "i")] } },
+                        { status: "accepted" }
+                    ]
+                }
+
+
             }
             const skip = page > 1 ? (page - 1) * size : 0;
             const result = await productCollection.find(query).skip(skip).limit(size).toArray();
@@ -102,7 +109,6 @@ async function run() {
 
         // get individual product data
         app.get('/product-details/:id', verifyToken, async (req, res) => {
-            console.log(req.header);
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await productCollection.findOne(query);
@@ -215,6 +221,37 @@ async function run() {
             const userVote = await voteCollection.insertOne(data);
             res.send(result);
 
+        })
+
+        // update product
+        app.patch('/update-product/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedData = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const updateProductData = {
+                $set: {
+                    productName: updatedData.productName,
+                    product_description: updatedData.product_description,
+                    image: updatedData.image,
+                    externalLink: updatedData.externalLink,
+                    tags: updatedData.tags,
+                    email: updatedData.email,
+                    userPhoto: updatedData.userPhoto,
+                    userName: updatedData.userName,
+                    timestamp: updatedData.timestamp,
+                }
+            }
+            const result = await productCollection.updateOne(filter, updateProductData);
+            res.send(result);
+
+        })
+
+        // delete a product created by user
+        app.delete('/product/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await productCollection.deleteOne(query);
+            res.send(result);
         })
 
         // Connect the client to the server	(optional starting in v4.7)
