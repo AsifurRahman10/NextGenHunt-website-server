@@ -196,6 +196,45 @@ async function run() {
             res.send(result);
         })
 
+        // get count for dashboard
+        app.get('/statistics', async (req, res) => {
+
+            // total money
+            const revenue = await paymentCollection.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalMoney: { $sum: "$price" }
+                    },
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        totalMoney: 1
+                    }
+                }
+            ]).toArray();
+
+            // total products
+            const totalProducts = await productCollection.estimatedDocumentCount();
+
+            // total user
+            const totalUser = await userCollection.estimatedDocumentCount();
+
+            // pending products
+
+            const query = { status: "pending" }
+
+            const pendingProducts = await productCollection.countDocuments(query);
+
+            // number of reviews
+            const totalReviews = await reviewCollection.estimatedDocumentCount()
+
+            const totalMoney = revenue.length > 0 ? revenue[0] : {};
+            res.send({ totalMoney, "Total Product": totalProducts, "Total User": totalUser, pendingProducts, "Total Reviews": totalReviews })
+        })
+
+
         // add new product to db
         app.post('/add-products', async (req, res) => {
             const productData = req.body;
