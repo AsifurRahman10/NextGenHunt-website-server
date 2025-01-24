@@ -405,6 +405,14 @@ async function run() {
             res.send(result);
         })
 
+        // delete coupon 
+        app.delete('/coupon/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await couponCollection.deleteOne(query);
+            res.send(result);
+        })
+
         // delete a product created by user
         app.delete('/product/:id', async (req, res) => {
             const id = req.params.id;
