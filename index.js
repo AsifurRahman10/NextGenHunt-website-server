@@ -235,6 +235,20 @@ async function run() {
             res.send({ totalMoney, "Total Product": totalProducts, "Total User": totalUser, pendingProducts, "Total Reviews": totalReviews })
         })
 
+        // get all coupon
+        app.get('/all-coupons', async (req, res) => {
+            const result = await couponCollection.find().toArray();
+            res.send(result);
+        })
+
+        // get a single coupon
+        app.get('/coupon-details/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await couponCollection.findOne(query);
+            res.send(result);
+        })
+
         // add coupon data to db
         app.post('/add-coupon', async (req, res) => {
             const couponData = req.body;
@@ -283,6 +297,23 @@ async function run() {
 
             const result = await userCollection.insertOne(userData);
             res.send(result)
+        })
+
+        // update Coupon
+        app.patch('/update-coupon/:id', async (req, res) => {
+            const id = req.params.id;
+            const updateData = req.body;
+            const query = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    couponCode: updateData.couponCode,
+                    couponDescription: updateData.couponDescription,
+                    discountAmount: updateData.discountAmount,
+                    expireDate: updateData.expireDate,
+                }
+            };
+            const result = await couponCollection.updateOne(query, updatedDoc);
+            res.send(result);
         })
 
         // post review of the user about product
