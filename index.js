@@ -30,6 +30,7 @@ async function run() {
         const voteCollection = client.db('nextgenhuntDB').collection('vote')
         const reviewCollection = client.db('nextgenhuntDB').collection('review')
         const paymentCollection = client.db('nextgenhuntDB').collection('payments')
+        const couponCollection = client.db('nextgenhuntDB').collection('coupons')
 
         // verify user token with middleware
         const verifyToken = (req, res, next) => {
@@ -234,6 +235,12 @@ async function run() {
             res.send({ totalMoney, "Total Product": totalProducts, "Total User": totalUser, pendingProducts, "Total Reviews": totalReviews })
         })
 
+        // add coupon data to db
+        app.post('/add-coupon', async (req, res) => {
+            const couponData = req.body;
+            const result = await couponCollection.insertOne(couponData);
+            res.send(result);
+        })
 
         // add new product to db
         app.post('/add-products', async (req, res) => {
