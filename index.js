@@ -31,6 +31,7 @@ async function run() {
         const reviewCollection = client.db('nextgenhuntDB').collection('review')
         const paymentCollection = client.db('nextgenhuntDB').collection('payments')
         const couponCollection = client.db('nextgenhuntDB').collection('coupons')
+        const featureCollection = client.db('nextgenhuntDB').collection('feature')
 
         // verify user token with middleware
         const verifyToken = (req, res, next) => {
@@ -128,7 +129,38 @@ async function run() {
 
         // get latest product for feature section
         app.get("/featureProducts", async (req, res) => {
-            const result = await productCollection.find().sort({ timestamp: -1 }).limit(4).toArray();
+            const result = await featureCollection.aggregate([
+                {
+                    $addFields: {
+                        productIdObject: { $toObjectId: "$productId" }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "products",
+                        localField: "productIdObject",
+                        foreignField: "_id",
+                        as: "productDetails"
+                    }
+                },
+                {
+                    $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true }
+                },
+                {
+                    $addFields: {
+                        upvote: "$productDetails.upvote",
+                        product_description: "$productDetails.product_description",
+                        productName: "$productDetails.productName",
+                        image: "$productDetails.image"
+                    }
+                },
+                {
+                    $project: {
+                        productDetails: 0, // Remove the nested productDetails object
+                        productIdObject: 0 // Remove temporary object field if unnecessary
+                    }
+                }
+            ]).toArray()
             res.send(result);
         })
 
@@ -249,6 +281,21 @@ async function run() {
             res.send(result);
         })
 
+        // get use role
+        app.get('/user-role/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await userCollection.findOne(query);
+            res.send({ userRole: result.role });
+        })
+
+        // add product to feature collection
+        app.post('/feature', async (req, res) => {
+            const productData = req.body;
+            const result = await featureCollection.insertOne(productData);
+            res.send(result);
+        })
+
         // add coupon data to db
         app.post('/add-coupon', async (req, res) => {
             const couponData = req.body;
@@ -259,6 +306,15 @@ async function run() {
         // add new product to db
         app.post('/add-products', async (req, res) => {
             const productData = req.body;
+            const query = { email: productData?.email }
+            const checkAlreadyPosted = await productCollection.findOne(query);
+            const userType = await userCollection.findOne(query);
+            console.log(checkAlreadyPosted);
+            console.log(userType);
+            if (userType?.userType === "free" && checkAlreadyPosted) {
+                console.log('hhelo');
+                return res.status(409).send({ message: "You have exceeded your post limit as a free user. Upgrade to premium for unlimited post access." });
+            }
             const result = await productCollection.insertOne(productData);
             res.send(result);
         })
@@ -320,6 +376,17 @@ async function run() {
         app.post('/post-review', async (req, res) => {
             const reviewData = req.body;
             const result = await reviewCollection.insertOne(reviewData);
+            res.send(result);
+        })
+
+        // upgrade free user to premium
+        app.patch('/upgrade-user/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const updateDoc = {
+                $set: { userType: "premium" }
+            }
+            const result = await userCollection.updateOne(query, updateDoc);
             res.send(result);
         })
 
