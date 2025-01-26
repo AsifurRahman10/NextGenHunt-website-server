@@ -44,7 +44,6 @@ async function run() {
                     return res.status(401).send({ message: "forbidden access" });
                 }
                 req.decoded = decoded;
-                console.log(decoded);
                 next();
             })
         }
@@ -54,7 +53,6 @@ async function run() {
             const email = req.decoded.email;
             const query = { email: email }
             const user = await userCollection.findOne(query);
-            console.log(user);
             const userType = user?.role == "admin";
             if (!userType) {
                 res.status(401).send({ message: "unauthorized access" })
@@ -78,7 +76,6 @@ async function run() {
             const query = { email: email }
             const user = await userCollection.findOne(query);
             const userType = user?.role == "moderator";
-            console.log(userType);
             if (!userType) {
                 res.status(401).send({ message: "unauthorized access" })
             }
@@ -101,7 +98,13 @@ async function run() {
             if (search) {
                 query = {
                     $and: [
-                        { allTag: { $in: [new RegExp(search, "i")] } },
+                        {
+                            allTag: {
+                                $elemMatch: {
+                                    text: { $regex: new RegExp(search, "i") }
+                                }
+                            }
+                        },
                         { status: "accepted" }
                     ]
                 }
@@ -146,7 +149,8 @@ async function run() {
 
         // product count for pagination
         app.get('/count', async (req, res) => {
-            const result = await productCollection.countDocuments();
+            const query = { status: { $ne: "pending" } };
+            const result = await productCollection.countDocuments(query);
             res.send({ result })
         })
 
@@ -174,7 +178,8 @@ async function run() {
                         upvote: "$productDetails.upvote",
                         product_description: "$productDetails.product_description",
                         productName: "$productDetails.productName",
-                        image: "$productDetails.image"
+                        image: "$productDetails.image",
+                        allTag: "$productDetails.allTag"
                     }
                 },
                 {
@@ -182,6 +187,12 @@ async function run() {
                         productDetails: 0, // Remove the nested productDetails object
                         productIdObject: 0 // Remove temporary object field if unnecessary
                     }
+                },
+                {
+                    $sort: { "timestamp": -1 }
+                },
+                {
+                    $limit: 4
                 }
             ]).toArray()
             res.send(result);
@@ -196,7 +207,7 @@ async function run() {
         })
 
         // get individual product data
-        app.get('/product-details/:id', verifyToken, async (req, res) => {
+        app.get('/product-details/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await productCollection.findOne(query);
@@ -224,7 +235,6 @@ async function run() {
         // check status
         app.get('/subscription-check/:email', verifyToken, verifyUser, async (req, res) => {
             const email = req.params.email;
-            console.log(email);
             const query = { email: email };
             const result = await paymentCollection.findOne(query);
             res.send(result);
@@ -292,7 +302,7 @@ async function run() {
         })
 
         // get all coupon
-        app.get('/all-coupons', verifyToken, async (req, res) => {
+        app.get('/all-coupons', async (req, res) => {
             const result = await couponCollection.find().toArray();
             res.send(result);
         })
@@ -333,10 +343,7 @@ async function run() {
             const query = { email: productData?.email }
             const checkAlreadyPosted = await productCollection.findOne(query);
             const userType = await userCollection.findOne(query);
-            console.log(checkAlreadyPosted);
-            console.log(userType);
             if (userType?.userType === "free" && checkAlreadyPosted) {
-                console.log('hhelo');
                 return res.status(409).send({ message: "You have exceeded your post limit as a free user. Upgrade to premium for unlimited post access." });
             }
             const result = await productCollection.insertOne(productData);
@@ -505,7 +512,7 @@ async function run() {
         })
 
         // delete a product created by user
-        app.delete('/product/:id', verifyToken, verifyModerator, async (req, res) => {
+        app.delete('/product/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await productCollection.deleteOne(query);
@@ -516,20 +523,20 @@ async function run() {
         // await client.connect();
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
     }
 }
-run().catch(console.dir);
+// run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('Hello World!')
+    // res.send('Hello World!')
 })
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+    // console.log(`Example app listening on port ${port}`)
 })
 
