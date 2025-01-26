@@ -44,6 +44,7 @@ async function run() {
                     return res.status(401).send({ message: "forbidden access" });
                 }
                 req.decoded = decoded;
+                console.log(decoded);
                 next();
             })
         }
@@ -53,8 +54,32 @@ async function run() {
             const email = req.decoded.email;
             const query = { email: email }
             const user = await userCollection.findOne(query);
-            const isAdmin = user?.role == "admin";
-            if (!isAdmin) {
+            console.log(user);
+            const userType = user?.role == "admin";
+            if (!userType) {
+                res.status(401).send({ message: "unauthorized access" })
+            }
+            next();
+        }
+        // verify user
+        const verifyUser = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await userCollection.findOne(query);
+            const userType = user?.role == "user";
+            if (!userType) {
+                res.status(401).send({ message: "unauthorized access" })
+            }
+            next();
+        }
+        // verify moderator
+        const verifyModerator = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await userCollection.findOne(query);
+            const userType = user?.role == "moderator";
+            console.log(userType);
+            if (!userType) {
                 res.status(401).send({ message: "unauthorized access" })
             }
             next();
@@ -66,8 +91,6 @@ async function run() {
             const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1d' });
             res.send({ token });
         })
-
-
 
         // get all products
         app.get('/all-products', async (req, res) => {
@@ -91,7 +114,7 @@ async function run() {
         })
 
         // get all data for moderator
-        app.get('/all-products-sorted', async (req, res) => {
+        app.get('/all-products-sorted', verifyToken, verifyModerator, async (req, res) => {
             // const result = await productCollection.find().sort({ status: -1 }).toArray();
             // res.send(result);
             const result = await productCollection.aggregate([
@@ -181,7 +204,7 @@ async function run() {
         })
 
         // get all the review 
-        app.get('/all-review/:id', async (req, res) => {
+        app.get('/all-review/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = {
                 productId: id
@@ -191,7 +214,7 @@ async function run() {
         })
 
         // get user info
-        app.get('/user-info/:email', async (req, res) => {
+        app.get('/user-info/:email', verifyToken, verifyUser, async (req, res) => {
             const email = req.params.email;
             const query = { email: email }
             const result = await userCollection.findOne(query);
@@ -199,7 +222,7 @@ async function run() {
         })
 
         // check status
-        app.get('/subscription-check/:email', async (req, res) => {
+        app.get('/subscription-check/:email', verifyToken, verifyUser, async (req, res) => {
             const email = req.params.email;
             console.log(email);
             const query = { email: email };
@@ -208,7 +231,7 @@ async function run() {
         })
 
         // get product my user email
-        app.get('/products/:email', async (req, res) => {
+        app.get('/products/:email', verifyToken, verifyUser, async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const result = await productCollection.find(query).toArray();
@@ -217,20 +240,21 @@ async function run() {
 
 
         // get all the user
-        app.get('/all-users', async (req, res) => {
+        app.get('/all-users', verifyToken, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result);
         })
 
         // get the reported content
-        app.get('/reported', async (req, res) => {
+        app.get('/reported', verifyToken, verifyModerator, async (req, res) => {
             const query = { isReported: true };
             const result = await productCollection.find(query).toArray();
             res.send(result);
         })
 
         // get count for dashboard
-        app.get('/statistics', async (req, res) => {
+        app.get('/statistics', verifyToken, verifyAdmin, async (req, res) => {
+            const email = req.decoded.email;
 
             // total money
             const revenue = await paymentCollection.aggregate([
@@ -268,13 +292,13 @@ async function run() {
         })
 
         // get all coupon
-        app.get('/all-coupons', async (req, res) => {
+        app.get('/all-coupons', verifyToken, async (req, res) => {
             const result = await couponCollection.find().toArray();
             res.send(result);
         })
 
         // get a single coupon
-        app.get('/coupon-details/:id', async (req, res) => {
+        app.get('/coupon-details/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await couponCollection.findOne(query);
@@ -282,7 +306,7 @@ async function run() {
         })
 
         // get use role
-        app.get('/user-role/:email', async (req, res) => {
+        app.get('/user-role/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const result = await userCollection.findOne(query);
@@ -290,21 +314,21 @@ async function run() {
         })
 
         // add product to feature collection
-        app.post('/feature', async (req, res) => {
+        app.post('/feature', verifyToken, verifyModerator, async (req, res) => {
             const productData = req.body;
             const result = await featureCollection.insertOne(productData);
             res.send(result);
         })
 
         // add coupon data to db
-        app.post('/add-coupon', async (req, res) => {
+        app.post('/add-coupon', verifyToken, verifyAdmin, async (req, res) => {
             const couponData = req.body;
             const result = await couponCollection.insertOne(couponData);
             res.send(result);
         })
 
         // add new product to db
-        app.post('/add-products', async (req, res) => {
+        app.post('/add-products', verifyToken, verifyUser, async (req, res) => {
             const productData = req.body;
             const query = { email: productData?.email }
             const checkAlreadyPosted = await productCollection.findOne(query);
@@ -320,7 +344,7 @@ async function run() {
         })
 
         // stripe payment intent
-        app.post('/create-payment-intent', async (req, res) => {
+        app.post('/create-payment-intent', verifyToken, verifyUser, async (req, res) => {
             const { price } = req.body;
             const amount = parseInt(price * 100);
             const paymentIntent = await stripe.paymentIntents.create({
@@ -336,7 +360,7 @@ async function run() {
         })
 
         // payment info saved to db
-        app.post('/paymentInfo', async (req, res) => {
+        app.post('/paymentInfo', verifyToken, verifyUser, async (req, res) => {
             const paymentData = req.body;
             const result = await paymentCollection.insertOne(paymentData);
             res.send(result);
@@ -356,7 +380,7 @@ async function run() {
         })
 
         // update Coupon
-        app.patch('/update-coupon/:id', async (req, res) => {
+        app.patch('/update-coupon/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const updateData = req.body;
             const query = { _id: new ObjectId(id) };
@@ -373,14 +397,14 @@ async function run() {
         })
 
         // post review of the user about product
-        app.post('/post-review', async (req, res) => {
+        app.post('/post-review', verifyToken, verifyUser, async (req, res) => {
             const reviewData = req.body;
             const result = await reviewCollection.insertOne(reviewData);
             res.send(result);
         })
 
         // upgrade free user to premium
-        app.patch('/upgrade-user/:email', async (req, res) => {
+        app.patch('/upgrade-user/:email', verifyToken, verifyUser, async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const updateDoc = {
@@ -391,7 +415,7 @@ async function run() {
         })
 
         // give vote
-        app.patch('/vote/:id', async (req, res) => {
+        app.patch('/vote/:id', verifyToken, verifyUser, async (req, res) => {
             const id = req.params.id;
             const data = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -414,7 +438,7 @@ async function run() {
         })
 
         // report a post
-        app.patch('/report/:id', async (req, res) => {
+        app.patch('/report/:id', verifyToken, verifyUser, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedProduct = {
@@ -425,7 +449,7 @@ async function run() {
         })
 
         // update product
-        app.patch('/update-product/:id', async (req, res) => {
+        app.patch('/update-product/:id', verifyToken, verifyUser, async (req, res) => {
             const id = req.params.id;
             const updatedData = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -449,7 +473,7 @@ async function run() {
 
         // update user role
 
-        app.patch('/update-role', async (req, res) => {
+        app.patch('/update-role', verifyToken, verifyAdmin, async (req, res) => {
             const { role, userId } = req.body;
             const query = { _id: new ObjectId(userId) };
             const updateData = {
@@ -461,7 +485,7 @@ async function run() {
 
 
         // update status by moderator
-        app.patch('/update-status/:id', async (req, res) => {
+        app.patch('/update-status/:id', verifyToken, verifyModerator, async (req, res) => {
             const id = req.params.id;
             const { status } = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -473,7 +497,7 @@ async function run() {
         })
 
         // delete coupon 
-        app.delete('/coupon/:id', async (req, res) => {
+        app.delete('/coupon/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await couponCollection.deleteOne(query);
@@ -481,7 +505,7 @@ async function run() {
         })
 
         // delete a product created by user
-        app.delete('/product/:id', async (req, res) => {
+        app.delete('/product/:id', verifyToken, verifyModerator, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await productCollection.deleteOne(query);
