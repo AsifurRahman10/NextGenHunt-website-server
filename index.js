@@ -207,7 +207,7 @@ async function run() {
         })
 
         // get individual product data
-        app.get('/product-details/:id', async (req, res) => {
+        app.get('/product-details/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await productCollection.findOne(query);
@@ -215,7 +215,8 @@ async function run() {
         })
 
         // get all the review 
-        app.get('/all-review/:id', verifyToken, async (req, res) => {
+        app.get('/all-review/:id', async (req, res) => {
+            console.log(req.params.id);
             const id = req.params.id;
             const query = {
                 productId: id
@@ -529,11 +530,11 @@ async function run() {
         // await client.close();
     }
 }
-// run().catch(console.dir);
+run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    // res.send('Hello World!')
+    res.send('Hello World!')
 })
 
 app.listen(port, () => {
