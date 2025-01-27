@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
+const nodemailer = require("nodemailer");
 const stripe = require("stripe")(`${process.env.Stripe_key}`);
 const app = express()
 
@@ -20,6 +21,40 @@ const client = new MongoClient(uri, {
     serverSelectionTimeoutMS: 3000,
     autoSelectFamily: false,
 });
+
+const sendEmail = (emailAddress, emailData) => {
+    const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        auth: {
+            user: process.env.MAILER_EMAIL,
+            pass: process.env.MAILER_PASSWORD,
+        },
+    });
+    transporter.verify((error, success) => {
+        if (error) {
+            console.log(error);
+        }
+        else {
+            console.log("transporter is ready", success);
+        }
+    })
+    const mailBody = {
+        from: process.env.MAILER_EMAIL, // sender address
+        to: emailAddress, // list of receivers
+        subject: "Payment successful, Welcome to NextGenTech premium", // Subject line
+        html: ` <p> ${emailData?.message}</p> `, // html body
+    }
+    transporter.sendMail(mailBody, (error, success) => {
+        if (error) {
+            console.log(error);
+        }
+        else {
+            console.log('Email Sent: ' + info?.response)
+        }
+    });
+}
 
 
 async function run() {
@@ -371,6 +406,11 @@ async function run() {
         app.post('/paymentInfo', verifyToken, verifyUser, async (req, res) => {
             const paymentData = req.body;
             const result = await paymentCollection.insertOne(paymentData);
+            if (result?.insertedId) {
+                sendEmail(paymentData?.email, {
+                    message: `You've placed an order successfully. Transaction Id: ${paymentData?.transactionId}`,
+                })
+            }
             res.send(result);
         })
 
@@ -538,6 +578,6 @@ app.get('/', (req, res) => {
 })
 
 app.listen(port, () => {
-    // console.log(`Example app listening on port ${port}`)
+    // console.log(`Example app listening on port ${ port } `)
 })
 
