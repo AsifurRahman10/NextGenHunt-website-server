@@ -67,6 +67,7 @@ async function run() {
         const paymentCollection = client.db('nextgenhuntDB').collection('payments')
         const couponCollection = client.db('nextgenhuntDB').collection('coupons')
         const featureCollection = client.db('nextgenhuntDB').collection('feature')
+        const blogsCollection = client.db('nextgenhuntDB').collection('blogs')
 
         // verify user token with middleware
         const verifyToken = (req, res, next) => {
@@ -149,6 +150,26 @@ async function run() {
             const skip = page > 1 ? (page - 1) * size : 0;
             const result = await productCollection.find(query).skip(skip).limit(size).toArray();
             res.send(result)
+        })
+
+        // add blog 
+        app.post('/add-blog', async (req, res) => {
+            const blogData = req.body;
+            const result = await blogsCollection.insertOne(blogData);
+            res.send(result);
+        })
+
+        // get blogs
+        app.get('/blogs', async (req, res) => {
+            const result = await blogsCollection.find().toArray();
+            res.send(result)
+        })
+
+        // get a single product
+        app.get('/blog/:id', async (req, res) => {
+            const filter = { _id: new ObjectId(id) };
+            const result = await blogsCollection.findOne(filter);
+            res.send(result);
         })
 
         // get all data for moderator
