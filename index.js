@@ -68,6 +68,7 @@ async function run() {
         const couponCollection = client.db('nextgenhuntDB').collection('coupons')
         const featureCollection = client.db('nextgenhuntDB').collection('feature')
         const blogsCollection = client.db('nextgenhuntDB').collection('blogs')
+        const commentsCollection = client.db('nextgenhuntDB').collection('comments')
 
         // verify user token with middleware
         const verifyToken = (req, res, next) => {
@@ -130,6 +131,7 @@ async function run() {
             const search = req.query.search || "";
             const page = parseInt(req.query.page);
             const size = parseInt(req.query.size);
+            const sort = req.query.sort;
             let query = { status: "accepted" };
             if (search) {
                 query = {
@@ -148,7 +150,17 @@ async function run() {
 
             }
             const skip = page > 1 ? (page - 1) * size : 0;
-            const result = await productCollection.find(query).skip(skip).limit(size).toArray();
+
+            const sortOptions = {};
+
+            if (sort === 'vote') {
+                sortOptions.upvote = -1
+            }
+
+            if (sort === 'title') {
+                sortOptions.productName = 1
+            }
+            const result = await productCollection.find(query).skip(skip).limit(size).sort(sortOptions).toArray();
             res.send(result)
         })
 
@@ -167,8 +179,30 @@ async function run() {
 
         // get a single product
         app.get('/blog/:id', async (req, res) => {
+            const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const result = await blogsCollection.findOne(filter);
+            res.send(result);
+        })
+
+        // get the latest blog
+        app.get('/blogs/latest', async (req, res) => {
+            const result = await blogsCollection.find().sort({ _id: -1 }).limit(3).toArray();
+            res.send(result)
+        })
+
+        // get comment data 
+        app.get('/all-comment/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { productId: id };
+            const result = await commentsCollection.find(query).sort({ _id: -1 }).toArray();
+            res.send(result);
+        })
+
+        // add comment
+        app.post('/add-comment', async (req, res) => {
+            const commentData = req.body;
+            const result = await commentsCollection.insertOne(commentData);
             res.send(result);
         })
 
