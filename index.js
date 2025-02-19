@@ -306,7 +306,6 @@ async function run() {
 
         // get all the review 
         app.get('/all-review/:id', async (req, res) => {
-            console.log(req.params.id);
             const id = req.params.id;
             const query = {
                 productId: id
@@ -316,7 +315,7 @@ async function run() {
         })
 
         // get user info
-        app.get('/user-info/:email', verifyToken, verifyUser, async (req, res) => {
+        app.get('/user-info/:email', async (req, res) => {
             const email = req.params.email;
             const query = { email: email }
             const result = await userCollection.findOne(query);
@@ -324,7 +323,7 @@ async function run() {
         })
 
         // check status
-        app.get('/subscription-check/:email', verifyToken, verifyUser, async (req, res) => {
+        app.get('/subscription-check/:email', async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const result = await paymentCollection.findOne(query);
