@@ -34,10 +34,8 @@ const sendEmail = (emailAddress, emailData) => {
     });
     transporter.verify((error, success) => {
         if (error) {
-            console.log(error);
         }
         else {
-            console.log("transporter is ready", success);
         }
     })
     const mailBody = {
@@ -48,10 +46,10 @@ const sendEmail = (emailAddress, emailData) => {
     }
     transporter.sendMail(mailBody, (error, success) => {
         if (error) {
-            console.log(error);
+            // console.log(error);
         }
         else {
-            console.log('Email Sent: ' + info?.response)
+            // console.log('Email Sent: ' + info?.response)
         }
     });
 }
@@ -175,6 +173,14 @@ async function run() {
         app.get('/blogs', async (req, res) => {
             const result = await blogsCollection.find().toArray();
             res.send(result)
+        })
+
+        // delete a blog
+        app.delete('/delete-blog/:id', verifyToken, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await blogsCollection.deleteOne(query);
+            res.send(result);
         })
 
         // get a single product
@@ -465,6 +471,21 @@ async function run() {
                     message: `You've placed an order successfully. Transaction Id: ${paymentData?.transactionId}`,
                 })
             }
+            res.send(result);
+        })
+
+        // update user info
+        app.patch('/update-user/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const { number, address } = req.body;
+            const updateDoc = {
+                $set: {
+                    number: number,
+                    address: address,
+                }
+            }
+            const result = await userCollection.updateOne(filter, updateDoc)
             res.send(result);
         })
 
